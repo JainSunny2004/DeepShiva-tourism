@@ -1,0 +1,30 @@
+{
+  "name": "india-travel-rag-backend",
+  "version": "1.0.0",
+  "description": "AI Travel Companion Backend with RAG",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "ingest": "node src/rag/ingestData.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^8.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "axios": "^1.6.2",
+    "chromadb": "^1.7.3",
+    "openai": "^4.20.1",
+    "compromise": "^14.10.0",
+    "helmet": "^7.1.0",
+    "express-rate-limit": "^7.1.5",
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
