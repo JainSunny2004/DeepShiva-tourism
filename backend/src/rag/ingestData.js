@@ -47,16 +47,56 @@ async function ingestAllData() {
 }
 
 /**
- * Ingest spiritual sites
+ * Ingest spiritual sites (robust to multiple JSON shapes)
  */
 async function ingestSpiritualSites() {
   console.log('📿 Ingesting spiritual sites...');
-  
+
   const filePath = path.join(DATA_DIR, 'spiritualSites.json');
-  const data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  
-  if (!data.sites || data.sites.length === 0) {
-    console.log('⚠️  No spiritual sites found');
+
+  if (!fs.existsSync(filePath)) {
+    console.log(`⚠️  File not found: ${filePath}`);
+    return;
+  }
+
+  const raw = fs.readFileSync(filePath, 'utf8');
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch (err) {
+    console.error('⚠️  Could not parse spiritualSites.json as JSON:', err.message);
+    return;
+  }
+
+  // Normalize to array 'sites'
+  let sites = null;
+
+  if (Array.isArray(data)) {
+    // file is directly an array
+    sites = data;
+  } else if (Array.isArray(data.sites)) {
+    sites = data.sites;
+  } else if (data.spiritualSites) {
+    if (Array.isArray(data.spiritualSites)) {
+      sites = data.spiritualSites;
+    } else if (Array.isArray(data.spiritualSites.sites)) {
+      sites = data.spiritualSites.sites;
+    }
+  }
+
+  // fallback: find the first array-like top-level property
+  if (!sites) {
+    const arrKey = Object.keys(data).find(k => Array.isArray(data[k]));
+    if (arrKey) {
+      console.warn(`⚠️  Using top-level array found at key "${arrKey}" as spiritual sites.`);
+      sites = data[arrKey];
+    }
+  }
+
+  if (!sites || sites.length === 0) {
+    console.log('⚠️  No spiritual sites found (after attempting multiple shapes).');
+    // helpful debug preview
+    console.log('File preview (first 800 chars):\n', raw.substring(0, 800));
     return;
   }
 
@@ -64,14 +104,16 @@ async function ingestSpiritualSites() {
   const documents = [];
   const metadatas = [];
 
-  for (const site of data.sites) {
-    ids.push(site.id);
+  for (const site of sites) {
+    // be defensive: ensure an id exists
+    const id = site.id || `sp_${Math.random().toString(36).slice(2,9)}`;
+    ids.push(id);
     documents.push(prepareTextForEmbedding(site, 'spiritual_site'));
     metadatas.push({
       type: 'spiritual_site',
       category: site.category || 'general',
       state: site.state || 'Unknown',
-      name: site.name,
+      name: site.name || 'Unknown',
       content: JSON.stringify(site),
     });
   }
@@ -79,7 +121,7 @@ async function ingestSpiritualSites() {
   const embeddings = await generateEmbeddingsBatch(documents);
   await addDocuments({ ids, documents, embeddings, metadatas });
 
-  console.log(`✅ Ingested ${data.sites.length} spiritual sites\n`);
+  console.log(`✅ Ingested ${sites.length} spiritual sites\n`);
 }
 
 /**
